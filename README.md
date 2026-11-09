@@ -1,79 +1,97 @@
-# 🚀 Full Stack Home Assignment: Registry UI Challenge
+# Registry
 
-Welcome to the "Registry UI Challenge!"  
-Your mission: create a simplified UI experience similar to DockerHub. You'll explore DockerHub's public APIs on your own and use them to build a polished, functional web app.  
+A focused Docker Hub image explorer: search repositories, open details, search paginated tags, and copy a pull command. Includes ten curated popular images with real metadata and local project logos. No account or Docker installation is needed.
 
----
+The original exercise is preserved in [docs/assignment.md](docs/assignment.md).
 
-## 🎯 Objective
+## Run locally
 
-Build a small but complete frontend application that consumes DockerHub's public APIs and allows browsing/searching repositories and tags.
+Prerequisites: **Node.js 24 LTS** (tested with 24.18.0), npm, and internet access to Docker Hub. No secrets, database, or `.env` file are required.
 
-👉 **Note:** We don't provide the API specification. Part of the challenge is to figure out how to access and use DockerHub's APIs yourself.
+```sh
+npm ci
+npm run dev
+```
 
----
+Open **http://127.0.0.1:5173**. Vite serves the UI; Node serves the API on port 3001. Stop with Ctrl+C.
 
-## 📋 Your Tasks
+For a production build served entirely by Node:
 
-1. Discover and use DockerHub's APIs to:  
-   - Search repositories by keyword.  
-   - Display repository details (tags, last updated, size).  
-   - Show tag lists for a repository.  
+```sh
+npm run build
+npm start
+```
 
-2. Implement the following two pages (your own design):
+Open **http://127.0.0.1:3001**. Direct repository links and refresh work without a Vite server. The server binds to loopback for local use. `PORT` can change the production port; development expects API port 3001.
 
-### 🔍 A. Explore Repositories
+### Certificate trust on managed networks
 
-- A search bar at the top to search for repositories by keyword.  
-- A showcase of 10 popular image repositories displayed as cards or any other format you find appropriate (no need for filters).  
-- Each repository entry should include at least: logo, repository name, description, and owner.  
-- Clicking a repository should take the user to the Repository Details page.  
+If Node reports `UNABLE_TO_VERIFY_LEAF_SIGNATURE` and your organization's CA is already trusted by the OS, use Node's system CA store for that terminal session:
 
-🔗 **Reference:** [DockerHub Explore](https://hub.docker.com/search?sort=pull_count&order=desc)  
+```powershell
+# PowerShell; set before npm ci or starting the server
+$env:NODE_OPTIONS="--use-system-ca"
+```
 
-### 📄 B. Repository Details
+```sh
+# macOS / Linux shell equivalent
+export NODE_OPTIONS=--use-system-ca
+```
 
-- Show repository title, description, owner, and last updated.  
-- Display a list of tags for the repository, each with:  
-  - Tag name  
-  - Last updated  
-  - Size  
-  - A "Copy Command" button (to copy `docker pull <repo>:<tag>`)  
+This was required in the development environment. It is not hardcoded into scripts and does not disable TLS validation. If the certificate is not trusted by the OS, fix the trust configuration rather than bypass verification.
 
-🔗 **Reference:** [Example Repository – Fluent Bit](https://hub.docker.com/r/fluent/fluent-bit)  
+## Checks
 
----
+```sh
+npm run typecheck
+npm run lint
+npm test
+npm run build
+npx playwright install chromium
+npm run test:e2e
+npm run smoke
+```
 
-## 🧠 Product Thinking
+- `npm test`: deterministic domain and server tests using small fixtures and injected fetch mocks.
+- `npm run test:e2e`: Chromium tests against the production build, with mocked Docker responses. Starts Node automatically if needed. Tests clipboard contents, navigation, concurrent searches, failure recovery, and mobile layout. Build first.
+- `npm run smoke`: **separate live** Docker Hub smoke test; needs internet and is intentionally outside the repeatable test suite.
+- `npm run format:check`: formatting verification; `npm run format` applies it.
 
-We expect you to treat this as a real product: think about what a user would need beyond the list above, and tell us what you added and why. Product judgment is part of the evaluation.  
+## Architecture
 
-Using AI tools is fine and expected — we care about the decisions behind the result.
+```text
+React pages -> src/api.ts -> explicit Express routes
+                                  |
+                           DockerHub adapter -> Docker Hub
+                                  |
+                        validated normalized data
+```
 
----
+| Location                                | Responsibility                                                               |
+| --------------------------------------- | ---------------------------------------------------------------------------- |
+| `src/Explore.tsx`, `src/Details.tsx`    | Two pages and their URL state                                                |
+| `src/components.tsx`                    | Search form, repository cards, pagination and status UI                      |
+| `src/api.ts`                            | Same-origin client requests and typed request errors                         |
+| `src/format.ts`                         | Dates, sizes and URL helpers                                                 |
+| `shared/types.ts`                       | Small UI data contracts and pull command generation                          |
+| `server/app.ts`, `server/validation.ts` | Four read routes, bounded input, safe errors and production static serving   |
+| `server/dockerHub.ts`                   | Docker endpoints, Zod validation, normalization, timeout and limited caching |
+| `tests/`, `scripts/smoke.ts`            | Deterministic tests and separate live check                                  |
 
-## 📦 Deliverables
+React Router handles deep links and query parameters. TanStack Query supplies keyed server state, cancellation and short-lived client caching, so old searches cannot replace new ones. Zod validates external responses. Express handles routing and local static serving. One package and two TypeScript configurations separate DOM and Node environments.
 
-1. **A working web app:**  
-   - Clean structure (components, API layer, etc.)  
-   - Instructions to run locally (README).  
+## Decisions and limits
 
-2. **A short summary document that includes:**  
-   - APIs you used and how you discovered them.  
-   - Key design decisions.  
-   - Product decisions: what you added or left out from a user's point of view, and why.  
-   - Challenges or lessons learned.  
-   - What you'd improve with more time.  
+- Explicit search: no request per keystroke. Query and page live in the URL; a new query resets pagination. Detail links preserve the explore URL.
+- Clear buttons restore input focus; pagination returns focus to the results. Copy confirmation clears after 2.5 seconds, and a selected read-only field supports manual copying when clipboard access fails.
+- Details and tags load independently. Loading, empty, not-found and retry states are visible. Clipboard success appears only after writing; failures leave a selectable command.
+- Tag search is server-side across tags, not a filter of the visible page. Repositories use 12 rows per page and tags use 10. No exhaustive prefetch.
+- Sizes are **linux/amd64 reported image sizes**, not a total across architectures or exact download estimate. Missing sizes are unavailable. Dates are UTC; supplied timestamps are available as tooltips.
+- Official images use namespace `library` for API requests and omit it in pull commands. Namespaced repositories retain their namespace.
+- Popular means curated, not a live ranking. The fixed showcase has a five-minute server cache and in-flight deduplication. Client queries are fresh for one minute and retained for five minutes after becoming unused. Search/tag results have no server cache.
+- Ten local Devicon logos cover the showcase; other results have an accessible initials fallback. License and source attribution are in `public/logos/`. No per-result logo requests.
+- Search and the tag-name filter worked live but were not found in the official reference reviewed. Anonymous tag access also relies on observed behavior. See [API evidence](docs/api-investigation.md).
+- Timeouts, runtime validation, bounded inputs, fixed upstream origin and a 429 cooldown limit failure impact. No automatic retries or arbitrary-URL proxy.
+- No authentication, persistence, favorites, analytics, CVE scoring or deployment. The product focuses on finding an image and copying a command.
 
----
-
-## 💡 Reminder
-
-- Part of the assignment is API exploration – show us how you approach discovering and integrating external APIs.  
-- Prioritize clarity, maintainability, and a nice-looking UI.  
-- Handle UX gracefully (loading states, errors, empty results).  
-
----
-
-Have fun! For all questions and clarifications – don't hesitate to reach out 🙂  
-Good luck! 🚀
+See [verification](docs/verification.md) for executed checks and limits, and [submission summary](docs/submission-summary.md) for the rationale. The PDF is in `output/pdf/registry-summary.pdf`.

@@ -1,0 +1,9 @@
+dist
+node_modules
+package-lock.json
+public/logos
+personal
+tmp
+test-results
+playwright-report
+docs/assignment.md

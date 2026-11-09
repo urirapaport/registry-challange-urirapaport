@@ -1,0 +1,3 @@
+Icons: Devicon https://github.com/devicons/devicon/tree/32fe1d3b3f36ad11f90ab94f7db59738139c2bf6
+MIT license included. Brand marks belong to their respective owners. No affiliation or endorsement implied.
+Mappings: postgres=postgresql, node=nodejs, mongo=mongodb, httpd=apache; others use the matching icon name.
