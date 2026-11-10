@@ -63,3 +63,23 @@ Retain previous tag data only within the same repository while a new query loads
 ## Platform display and top pagination (November 10)
 
 All 37 unit/server tests and 17 Chromium scenarios passed, along with build, strict type checks and lint. OS/architecture selectors were removed following inconsistent live upstream filtering. Every known platform is retained per tag; expandable lists include ARM variants and Windows versions with individual sizes. Tests verify legacy selector URL parameters cannot hide platforms, both pagination controls stay synchronized through page three and back, boundary buttons disable correctly, search resets pagination, reload preserves page and return context is retained. Mobile/desktop screenshots were inspected and axe scans passed. The prior live smoke and Linux/Windows API checks remain applicable; no backend behavior changed in this UI refinement. No push was performed.
+
+## Submission summary claim audit (November 10)
+
+Reviewed the summary against the final source and existing successful build/lint/typecheck, 37 unit/server tests and 17 browser scenarios. No application code changed during this audit.
+
+| Claim group                                                        | Evidence reviewed                                                                                                                      |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Assignment and future improvements                                 | Original requirements in docs/assignment.md                                                                                            |
+| Endpoints, identity, size metadata, caching and cooldown           | server/dockerHub.ts; shared/types.ts; fresh live API calls                                                                             |
+| Routes, validation, safe error responses and production deep links | server/app.ts; server/validation.ts; direct browser navigation                                                                         |
+| Search, debounce, URL state, focus and dual pagination             | src/pages; src/hooks/useDebouncedSearch.ts; existing Chromium results                                                                  |
+| Client cache and refetch settings                                  | src/app/queryClient.ts                                                                                                                 |
+| Clipboard confirmation and manual fallback                         | src/hooks/useCopyCommand.ts; src/components/CopyCommand.ts; fixture tests and live clipboard checks                                    |
+| Logos, license and attribution                                     | public/logos; src/components/Logo.tsx                                                                                                  |
+| API reference and CORS                                             | Official details/tags reference rechecked; live search/details/tags responses had no Access-Control-Allow-Origin with localhost Origin |
+| Dependency findings                                                | Fresh npm audit: 10 moderate development findings; npm audit --omit=dev: 0                                                             |
+
+The live smoke passed again. Fresh Chromium checks verified ten showcase cards, repository search, official and namespaced details, and exact clipboard text without page errors. An initial browser script timed out while navigating immediately after search; rerunning with an explicit search transition wait and DOM readiness succeeded. This was not treated as a passed first attempt.
+
+Summary wording now distinguishes upstream data from cached showcase data, validates only consumed response fields, limits retry disabling to the affected view, describes tests as scenario checks rather than proofs, and dates dependency findings. Historical lessons are supported by the earlier verification log; they are not presented as newly reproduced defects. No Docker images were pulled or run; Firefox/Safari and complete screen-reader testing remain outside the verified scope.
