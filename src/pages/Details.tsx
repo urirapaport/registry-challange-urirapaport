@@ -33,6 +33,11 @@ export function Details() {
   const tags = useQuery({
     queryKey: ["tags", namespace, name, query, page],
     queryFn: ({ signal }) => api.tags(namespace, name, query, page, signal),
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === namespace &&
+      previousQuery.queryKey[2] === name
+        ? previousData
+        : undefined,
   });
 
   function updateTags(q: string, next: number, replace = false) {
@@ -121,16 +126,12 @@ export function Details() {
           placeholder="Search all tags, e.g. alpine"
           onSearch={(value) => updateTags(value, 1)}
           onDebouncedSearch={(value) => updateTags(value, 1, true)}
+          isSearching={tags.isFetching}
         />
         <p className="size-note">
           Sizes are reported image sizes for <code>linux/amd64</code>, not the
           sum of all platforms. Your download may differ.
         </p>
-        {query && (
-          <button className="clear-tags" onClick={() => updateTags("", 1)}>
-            Clear tag search ×
-          </button>
-        )}
         {tags.isPending ? (
           <Loading label="Loading tags…" />
         ) : tags.isError ? (
@@ -138,11 +139,15 @@ export function Details() {
         ) : (
           <>
             <p className="result-count" role="status">
-              {tags.data.count.toLocaleString("en")}{" "}
-              {query ? "matching tags" : "tags"} · Page {page}
+              {tags.isPlaceholderData
+                ? "Updating tags…"
+                : `${tags.data.count.toLocaleString("en")} ${query ? "matching tags" : "tags"} · Page ${page}`}
             </p>
             {tags.data.items.length ? (
-              <div className="tag-table-wrap">
+              <div
+                className="tag-table-wrap"
+                aria-busy={tags.isPlaceholderData}
+              >
                 <table className="tag-table">
                   <thead>
                     <tr>
@@ -176,7 +181,11 @@ export function Details() {
                             {formatSize(tag.size)}
                           </td>
                           <td>
-                            <CopyCommand key={command} command={command} />
+                            <CopyCommand
+                              key={command}
+                              command={command}
+                              disabled={tags.isPlaceholderData}
+                            />
                           </td>
                         </tr>
                       );
@@ -197,6 +206,7 @@ export function Details() {
             <Pagination
               page={page}
               hasNext={tags.data.hasNext}
+              disabled={tags.isPlaceholderData}
               onChange={(next) => {
                 updateTags(query, next);
                 tagsHeading.current?.focus({ preventScroll: true });

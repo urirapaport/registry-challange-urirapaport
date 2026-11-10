@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { useDebouncedSearch } from "../hooks/useDebouncedSearch";
 
 export function SearchForm({
   initial,
@@ -7,18 +8,19 @@ export function SearchForm({
   placeholder,
   onSearch,
   onDebouncedSearch,
+  isSearching = false,
 }: {
   initial: string;
   label: string;
   placeholder: string;
   onSearch: (value: string) => void;
   onDebouncedSearch?: (value: string) => void;
+  isSearching?: boolean;
 }) {
   const [value, setValue] = useState(initial);
   const [previousInitial, setPreviousInitial] = useState(initial);
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
-  const debounceTimer = useRef<number | undefined>(undefined);
 
   // Synchronize URL navigation without remounting the focused input.
   if (previousInitial !== initial) {
@@ -26,21 +28,15 @@ export function SearchForm({
     setValue(initial);
   }
 
-  useEffect(() => {
-    if (!onDebouncedSearch || value.trim() === initial) {
-      return;
-    }
-
-    debounceTimer.current = window.setTimeout(() => {
-      onDebouncedSearch(value.trim());
-    }, 500);
-
-    return () => window.clearTimeout(debounceTimer.current);
-  }, [value, initial, onDebouncedSearch]);
+  const { cancel: cancelPendingSearch } = useDebouncedSearch(
+    value,
+    initial,
+    onDebouncedSearch,
+  );
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    window.clearTimeout(debounceTimer.current);
+    cancelPendingSearch();
     onSearch(value.trim());
   }
 
@@ -50,12 +46,13 @@ export function SearchForm({
       onSubmit={submit}
       role="search"
       aria-label={label}
+      aria-busy={isSearching}
     >
       <label className="sr-only" htmlFor={inputId}>
         {label}
       </label>
       <span className="search-icon" aria-hidden="true">
-        ⌕
+        {isSearching ? <span className="spinner search-spinner" /> : "⌕"}
       </span>
       <input
         ref={inputRef}
@@ -80,7 +77,7 @@ export function SearchForm({
               : "Clear repository search"
           }
           onClick={() => {
-            window.clearTimeout(debounceTimer.current);
+            cancelPendingSearch();
             setValue("");
             onSearch("");
             inputRef.current?.focus();

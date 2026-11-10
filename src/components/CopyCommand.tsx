@@ -1,36 +1,19 @@
-import { useEffect, useState } from "react";
+import { useCopyCommand } from "../hooks/useCopyCommand";
 
-export function CopyCommand({ command }: { command: string }) {
-  const [state, setState] = useState<"idle" | "copying" | "copied" | "failed">(
-    "idle",
-  );
-
-  useEffect(() => {
-    if (state !== "copied") {
-      return;
-    }
-
-    const timer = window.setTimeout(() => setState("idle"), 2500);
-
-    return () => window.clearTimeout(timer);
-  }, [state]);
-
-  async function copy() {
-    setState("copying");
-
-    try {
-      await navigator.clipboard.writeText(command);
-      setState("copied");
-    } catch {
-      setState("failed");
-    }
-  }
+export function CopyCommand({
+  command,
+  disabled = false,
+}: {
+  command: string;
+  disabled?: boolean;
+}) {
+  const { state, copy } = useCopyCommand(command);
 
   return (
     <div className="copy-cell">
       <button
         className={state === "copied" ? "copy-button copied" : "copy-button"}
-        disabled={state === "copying"}
+        disabled={disabled || state === "copying"}
         onClick={() => void copy()}
         aria-label={`Copy ${command}`}
       >

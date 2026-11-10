@@ -285,9 +285,10 @@ test("clear actions preserve input focus and pagination returns to results", asy
   await expect(page).not.toHaveURL(/q=|page=/);
   await page.getByRole("searchbox").fill("alpine");
   await page.getByRole("searchbox").press("Enter");
-  await page
-    .getByRole("button", { name: "Clear tag search ×", exact: true })
-    .click();
+  await expect(
+    page.getByRole("button", { name: "Clear tag search ×", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Clear tag filter" }).click();
   await expect(page.getByRole("searchbox")).toHaveValue("");
   await expect(
     page.getByRole("link", {
@@ -533,6 +534,7 @@ test("tag submit and clear cancel pending debounce; repository search stays expl
 
   await input.fill("abandoned");
   await page.getByRole("link", { name: "Back to repositories" }).click();
+  await expect(page).toHaveURL("/");
   await page.clock.runFor(600);
   await expect(page).toHaveURL("/");
   expect(tagRequests).not.toContain("abandoned");
@@ -541,3 +543,77 @@ test("tag submit and clear cancel pending debounce; repository search stays expl
   await expect(page).toHaveURL("/");
   await expect(page.locator(".repo-card")).toHaveCount(10);
 });
+
+for (const width of [375, 1280]) {
+  test(`tag results keep their layout while a new filter loads at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    let releaseSearch: () => void = () => {};
+    const searchGate = new Promise<void>((resolve) => {
+      releaseSearch = resolve;
+    });
+    await page.route(
+      "**/api/repositories/library/nginx/tags?*",
+      async (route) => {
+        const filtered =
+          new URL(route.request().url()).searchParams.get("q") === "alpine";
+        if (filtered) {
+          await searchGate;
+        }
+        await reply(route, {
+          items: Array.from({ length: 10 }, (_, index) => ({
+            name: `${filtered ? "alpine" : "stable"}-${index}`,
+            updatedAt: "2026-11-01T12:00:00Z",
+            size: 1048576,
+          })),
+          count: 20,
+          hasNext: true,
+        });
+      },
+    );
+
+    await page.goto("/repositories/library/nginx");
+    const table = page.locator(".tag-table-wrap");
+    await expect(page.locator(".tag-name")).toHaveCount(10);
+    const input = page.getByRole("searchbox");
+    await input.focus();
+    const before = await table.boundingBox();
+    const footerBefore = await page.locator("footer").boundingBox();
+    await input.fill("alpine");
+    await expect(page.locator(".result-count")).toHaveText("Updating tags…");
+    await expect(
+      page.getByRole("search", { name: "Search tags", exact: true }),
+    ).toHaveAttribute("aria-busy", "true");
+    await expect(page.locator(".search-spinner")).toBeVisible();
+    await expect(table).toHaveAttribute("aria-busy", "true");
+    await expect(page.locator(".tag-name").first()).toHaveText("stable-0");
+    await expect(
+      page.getByRole("button", {
+        name: "Copy docker pull nginx:stable-0",
+        exact: true,
+      }),
+    ).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Next" })).toBeDisabled();
+    await expect(input).toBeFocused();
+    const during = await table.boundingBox();
+    const footerDuring = await page.locator("footer").boundingBox();
+    expect(before).not.toBeNull();
+    expect(during?.height).toBeCloseTo(before!.height, 0);
+    expect(during?.y).toBeCloseTo(before!.y, 0);
+    expect(footerDuring?.y).toBeCloseTo(footerBefore!.y, 0);
+    await page.screenshot({ path: `test-results/tags-updating-${width}.png` });
+
+    releaseSearch();
+    await expect(table).toHaveAttribute("aria-busy", "false");
+    await expect(page.locator(".search-spinner")).toHaveCount(0);
+    await expect(page.locator(".tag-name").first()).toHaveText("alpine-0");
+    await expect(
+      page.getByRole("button", {
+        name: "Copy docker pull nginx:alpine-0",
+        exact: true,
+      }),
+    ).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Next" })).toBeEnabled();
+  });
+}

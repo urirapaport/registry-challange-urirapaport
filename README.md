@@ -74,6 +74,7 @@ React pages -> src/api/client.ts -> explicit Express routes
 | `src/styles/global.css`                          | Shared visual design and responsive styles                                      |
 | `src/pages/Explore.tsx`, `src/pages/Details.tsx` | Two pages and their URL state                                                   |
 | `src/components/`                                | One component per file: search, cards, logos, pagination, copying and status UI |
+| `src/hooks/`                                     | Clipboard feedback and debounced search timing, separate from the UI            |
 | `src/api/client.ts`                              | Same-origin client requests and typed request errors                            |
 | `src/utils/format.ts`                            | Dates, sizes and URL helpers                                                    |
 | `shared/types.ts`                                | Small UI data contracts and pull command generation                             |
@@ -83,12 +84,13 @@ React pages -> src/api/client.ts -> explicit Express routes
 
 React Router handles deep links and query parameters. TanStack Query supplies keyed server state, cancellation and short-lived client caching, so old searches cannot replace new ones. Zod validates external responses. Express handles routing and local static serving. One package and two TypeScript configurations separate DOM and Node environments.
 
-The client is grouped by responsibility: `app/` composes the application, `pages/` owns URL state and page queries, `components/` contains one UI component per file, `api/` handles HTTP, `utils/` holds pure helpers, and `styles/` holds the shared stylesheet. Imports point directly to each component. The server remains five focused files; additional controller/service folders would add indirection without separating new responsibilities.
+The client is grouped by responsibility: `app/` composes the application, `pages/` owns URL state and page queries, `components/` contains one UI component per file, `hooks/` isolates stateful behavior such as clipboard feedback and debounced search, `api/` handles HTTP, `utils/` holds pure helpers, and `styles/` holds the shared stylesheet. Imports point directly to each component. The server remains five focused files; additional controller/service folders would add indirection without separating new responsibilities.
 
 ## Decisions and limits
 
 - Repository search is explicitly submitted. Tag search runs after a 500 ms typing pause; Enter and Search submit immediately. Automatic tag updates replace the current history entry rather than adding one per pause. Query and page live in the URL; a new query resets pagination. Detail links preserve the explore URL.
 - Clear buttons restore input focus; pagination returns focus to the results. Copy confirmation clears after 2.5 seconds, and a selected read-only field supports manual copying when clipboard access fails.
+- Tag results stay visible while a new filter or page loads for the same repository, with an updating status and temporarily disabled copy/pagination controls. The input clear button is the single tag-search reset action.
 - Details and tags load independently. Loading, empty, not-found and retry states are visible. Clipboard success appears only after writing; failures leave a selectable command.
 - Tag search is server-side across tags, not a filter of the visible page. Repositories use 12 rows per page and tags use 10. No exhaustive prefetch.
 - Sizes are **linux/amd64 reported image sizes**, not a total across architectures or exact download estimate. Missing sizes are unavailable. Dates are UTC; supplied timestamps are available as tooltips.

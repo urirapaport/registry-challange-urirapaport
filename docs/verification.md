@@ -8,7 +8,7 @@ Executed November 9, 2026, on Windows with Node 24.18.0. Commands are in README.
 | Lint              | `npm run lint` passed without disabled rules.                                                                                        |
 | Unit/integration  | `npm test`: 35 tests passed, including identity, commands, sizes, input, error mapping, cooldown, caching and fixed upstream origin. |
 | Build             | `npm run build` passed. Express serves the built client and API.                                                                     |
-| Chromium fixtures | `npm run test:e2e`: 13 scenarios passed against production assets with mocked API responses.                                         |
+| Chromium fixtures | `npm run test:e2e`: 15 scenarios passed against production assets with mocked API responses.                                         |
 | Live API          | `npm run smoke` passed: ten showcase entries, search/tag pagination, empty results, namespaced details and 404.                      |
 | Live browser      | Ten actual showcase entries/logos, nginx search, official details, tags and exact clipboard content inspected. Final checks below.   |
 
@@ -50,8 +50,12 @@ The follow-up review added one-click clear buttons that restore input focus, pag
 
 Contrast findings in secondary text and table headings were corrected. Long descriptions exposed a minimum-width issue in the single-column card grid; a zero-minimum grid track and wrapping fix it. Buttons and search/manual-copy fields have a minimum 44px height; mobile inputs use 16px text to avoid automatic focus zoom in browsers that apply it.
 
-The final suite contains 35 unit/server tests and 13 browser scenarios. Automated accessibility scans do not prove complete accessibility. Screen-reader evaluation and Firefox/Safari checks remain outside the verification performed. Interactive visual tooling became unavailable partway through the follow-up; the final responsive and contrast checks used the automated Chromium suite.
+The final suite contains 35 unit/server tests and 15 browser scenarios. Automated accessibility scans do not prove complete accessibility. Screen-reader evaluation and Firefox/Safari checks remain outside the verification performed. Interactive visual tooling became unavailable partway through the follow-up; the final responsive and contrast checks used the automated Chromium suite.
 
 ## Tag search debounce verification
 
-Verified November 10, 2026, after splitting components into individual files. Tag search waits 500 ms after typing, resets pagination, preserves the explore return URL and replaces the current history entry. Enter and Search submit immediately; clear, URL navigation and unmount cancel a pending timer. Two additional Chromium scenarios exercise these behaviors with a controlled clock and confirm that repository search remains explicit. All 13 browser scenarios passed, including responsive and accessibility checks.
+Verified November 10, 2026, after splitting components into individual files. Tag search waits 500 ms after typing, resets pagination, preserves the explore return URL and replaces the current history entry. Enter and Search submit immediately; clear, URL navigation and unmount cancel a pending timer. Two additional Chromium scenarios exercise these behaviors with a controlled clock and confirm that repository search remains explicit. All 15 browser scenarios passed, including responsive and accessibility checks.
+
+## Stable tag results during filtering
+
+Retain previous tag data only within the same repository while a new query loads. Display an updating status instead of the stale count; disable copying and pagination until the new results arrive. Remove the duplicate tag-clear button and keep the input clear action. Slow-response Chromium checks at 375px and 1280px compare table height, table position and footer position during the request, and verify controls recover after the response.
