@@ -34,7 +34,7 @@ Details and tags routes are documented. Search and the tag-name filter were not 
 
 **Useful additions.** Server-side tag search and pagination help with large repositories. Visible commands make copying transparent and remain selectable if clipboard permission fails. Success appears only after writing and clears after 2.5 seconds. A selected read-only field supports manual copying if clipboard access fails. Clear controls preserve input focus; pagination returns focus to the results. Official-image labels, owners, UTC dates, platform labels, focus styles and mobile tag layout reduce ambiguity and support keyboard use.
 
-**Deliberate limits.** No accounts, database, favorites, analytics, security scoring or deployment. The app does not fetch all tags, infer stability from latest, render upstream HTML descriptions, or claim its showcase is a live ranking. Full search-logo coverage and repository-wide platform filtering remain deferred. Unreliable upstream platform filters are not exposed; all known platforms are displayed within each tag.
+**Deliberate limits.** No accounts, database, favorites, analytics, security scoring or deployment. The app does not fetch all tags, infer stability from latest, render upstream HTML descriptions, or claim its showcase is a live ranking. Full search-logo coverage and repository-wide platform filtering remain deferred. All known platforms are displayed within each tag; broader filtering remains a future improvement.
 
 ---
 
@@ -48,7 +48,7 @@ Details and tags routes are documented. Search and the tag-name filter were not 
 
 **Remaining risks.** Observed endpoints can change; validation makes incompatible responses recoverable but cannot preserve a removed API. Tags and pagination are mutable. Logos cover ten projects. Keyboard and responsive checks do not constitute a complete screen-reader audit or cross-browser certification. Development tooling has moderate transitive minimatch audit findings; production dependencies have a clean audit. No forced major override was used to hide the tooling findings.
 
-**With more time.** Add repository-wide filtering by operating system and CPU architecture, with accurate counts and pagination. First verify reliable upstream filtering or design a bounded indexing strategy: live API probes returned inconsistent matches and counts, so filtering only the loaded page would mislead users. Also improve partial showcase recovery, logo coverage, contract monitoring and screen-reader/Firefox/Safari testing. Before internet hosting, add application-level request limiting and operational monitoring.
+**With more time.** Add filtering by operating system and CPU architecture, addressing the performance and pagination challenges of larger repositories. Also improve partial showcase recovery, logo coverage, contract monitoring and screen-reader/Firefox/Safari testing. Before internet hosting, add application-level request limiting and operational monitoring.
 
 **AI assistance.** AI assisted investigation, code, tests, visual review and documentation. Generated output was checked with compiler/lint tools, fixture tests, real API calls and browser interactions. These checks do not replace the candidate's responsibility to understand the solution; no claim of manual line-by-line candidate review is made.
 
