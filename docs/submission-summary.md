@@ -2,7 +2,7 @@
 
 ## 1. Product and API discovery
 
-Registry supports a small developer workflow: search for an image, inspect its repository, find a tag, and copy a pull command. It has two responsive pages, an explicit search action, shareable URL state, and ten curated popular repositories. The original assignment is preserved in the repository.
+Registry supports a small developer workflow: search for an image, inspect its repository, find a tag, and copy a pull command. It has two responsive pages, explicit repository search and debounced tag search, shareable URL state, and ten curated popular repositories. The original assignment is preserved in the repository.
 
 Investigation began with the assignment's Docker Hub references, candidate endpoints supplied for investigation, and the official API reference. Small unauthenticated requests verified search, pagination, public details, tags, empty responses and missing repositories. Evidence is in docs/api-investigation.md.
 
@@ -28,7 +28,7 @@ Details and tags routes are documented. Search and the tag-name filter were not 
 
 **Why a server.** Tested responses lacked Access-Control-Allow-Origin for localhost. The browser calls the local server, which also serves the built UI in production, including deep links. Production does not depend on Vite's development proxy. No credentials or persistence are required.
 
-**Request behavior.** React Router stores search and page in URLs and preserves the originating explore URL in detail links. Explicit submission avoids requests per keystroke. TanStack Query separates state by query key, passes abort signals and deduplicates requests. Client data is fresh for one minute; inactive entries expire after five minutes. Automatic retries, focus and reconnect refetching are disabled.
+**Request behavior.** React Router stores search and page in URLs and preserves the originating explore URL in detail links. Repository search is explicit; tags update after a 500 ms pause, with immediate submission available. Automatic updates replace browser history and reset pagination. TanStack Query separates state by query key, passes abort signals and deduplicates requests. Client data is fresh for one minute; inactive entries expire after five minutes. Automatic retries, focus and reconnect refetching are disabled.
 
 **Failure boundaries.** Details and tags load independently, with loading, empty, error and retry states. The server accepts known operations, bounds and validates input, encodes parameters, fixes page sizes, times out requests after ten seconds, and emits safe errors. It never follows arbitrary next-page URLs. A 429 sets a process-wide Retry-After cooldown, capped at one hour; the UI disables retry during that period. Only the fixed showcase has a five-minute server cache with in-flight deduplication to prevent repeated ten-request fan-out.
 

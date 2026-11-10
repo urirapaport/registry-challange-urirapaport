@@ -438,3 +438,106 @@ test("long input and tag names remain usable at 320px", async ({ page }) => {
     ),
   ).toBe(true);
 });
+
+test("tag search debounces typing, resets pagination and replaces browser history", async ({
+  page,
+}) => {
+  const tagRequests: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.endsWith("/tags")) {
+      tagRequests.push(url.searchParams.get("q") ?? "");
+    }
+  });
+
+  await page.goto("/?q=nginx");
+  await page.locator(".repo-card").click();
+  await expect(
+    page.getByText("docker pull nginx:1.2-alpine", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(
+    page.getByText("docker pull nginx:1.1-alpine", { exact: true }),
+  ).toBeVisible();
+
+  await page.clock.install();
+  await page.clock.pauseAt(new Date());
+  tagRequests.length = 0;
+  const input = page.getByRole("searchbox", {
+    name: "Search tags",
+    exact: true,
+  });
+  await input.fill("al");
+  await page.clock.runFor(300);
+  await input.fill("alpine");
+  await page.clock.runFor(300);
+  expect(tagRequests).toEqual([]);
+  await expect(page).toHaveURL(/page=2/);
+
+  await page.clock.runFor(200);
+  await expect(page).toHaveURL(/q=alpine/);
+  await expect(page).not.toHaveURL(/page=2/);
+  await expect(input).toBeFocused();
+  await expect.poll(() => tagRequests).toEqual(["alpine"]);
+  expect(new URL(page.url()).searchParams.get("from")).toBe("/?q=nginx");
+
+  await input.fill("pending");
+  await page.goBack();
+  await expect(input).toHaveValue("");
+  await page.clock.runFor(600);
+  await expect(page).not.toHaveURL(/q=|page=/);
+  expect(tagRequests).not.toContain("pending");
+  await page.goBack();
+  await expect(page).toHaveURL("/?q=nginx");
+});
+
+test("tag submit and clear cancel pending debounce; repository search stays explicit", async ({
+  page,
+}) => {
+  const tagRequests: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.endsWith("/tags")) {
+      tagRequests.push(url.searchParams.get("q") ?? "");
+    }
+  });
+
+  await page.goto("/repositories/library/nginx");
+  await expect(
+    page.getByText("docker pull nginx:1.2-alpine", { exact: true }),
+  ).toBeVisible();
+  await page.clock.install();
+  await page.clock.pauseAt(new Date());
+  tagRequests.length = 0;
+  const input = page.getByRole("searchbox");
+  await input.fill("alpine");
+  await input.press("Enter");
+  await expect(page).toHaveURL(/q=alpine/);
+  await expect.poll(() => tagRequests).toEqual(["alpine"]);
+  await page.clock.runFor(600);
+  expect(tagRequests).toEqual(["alpine"]);
+
+  await input.fill("stable");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(page).toHaveURL(/q=stable/);
+  await expect.poll(() => tagRequests).toEqual(["alpine", "stable"]);
+  await input.fill("pending");
+  await page
+    .getByRole("button", { name: "Clear tag filter", exact: true })
+    .click();
+  await page.clock.runFor(600);
+  await expect(page).not.toHaveURL(/q=/);
+  await expect(input).toHaveValue("");
+  await expect(input).toBeFocused();
+  expect(tagRequests).not.toContain("pending");
+
+  await input.fill("abandoned");
+  await page.getByRole("link", { name: "Back to repositories" }).click();
+  await page.clock.runFor(600);
+  await expect(page).toHaveURL("/");
+  expect(tagRequests).not.toContain("abandoned");
+  await page.getByRole("searchbox").fill("redis");
+  await page.clock.runFor(1000);
+  await expect(page).toHaveURL("/");
+  await expect(page.locator(".repo-card")).toHaveCount(10);
+});

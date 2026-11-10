@@ -1,93 +1,59 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { pullCommand } from "../shared/types";
-import { api } from "./api";
+import { pullCommand } from "../../shared/types";
+import { api } from "../api/client";
+import { CopyCommand } from "../components/CopyCommand";
+import { EmptyState } from "../components/EmptyState";
+import { ErrorState } from "../components/ErrorState";
+import { Loading } from "../components/Loading";
+import { Logo } from "../components/Logo";
+import { Pagination } from "../components/Pagination";
+import { SearchForm } from "../components/SearchForm";
 import {
-  EmptyState,
-  ErrorState,
-  Loading,
-  Logo,
-  Pagination,
-  SearchForm,
-} from "./components";
-import { formatDate, formatSize, readPage, safeReturnTo } from "./format";
-
-export function CopyCommand({ command }: { command: string }) {
-  const [state, setState] = useState<"idle" | "copying" | "copied" | "failed">(
-    "idle",
-  );
-  useEffect(() => {
-    if (state !== "copied") return;
-    const timer = window.setTimeout(() => setState("idle"), 2500);
-    return () => window.clearTimeout(timer);
-  }, [state]);
-  async function copy() {
-    setState("copying");
-    try {
-      await navigator.clipboard.writeText(command);
-      setState("copied");
-    } catch {
-      setState("failed");
-    }
-  }
-  return (
-    <div className="copy-cell">
-      <button
-        className={state === "copied" ? "copy-button copied" : "copy-button"}
-        disabled={state === "copying"}
-        onClick={() => void copy()}
-        aria-label={`Copy ${command}`}
-      >
-        {state === "copied"
-          ? "✓ Copied"
-          : state === "copying"
-            ? "Copying…"
-            : "Copy command"}
-      </button>
-      <span className="sr-only" role="status">
-        {state === "copied" ? `Copied ${command}` : ""}
-      </span>
-      {state === "failed" && (
-        <div className="manual-copy">
-          <p className="copy-error" role="alert">
-            Copy failed. Copy the selected command manually.
-          </p>
-          <input
-            aria-label="Command to copy manually"
-            value={command}
-            readOnly
-            autoFocus
-            onFocus={(event) => event.currentTarget.select()}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
+  formatDate,
+  formatSize,
+  readPage,
+  safeReturnTo,
+} from "../utils/format";
 
 export function Details() {
   const { namespace = "", name = "" } = useParams();
   const [params, setParams] = useSearchParams();
   const tagsHeading = useRef<HTMLHeadingElement>(null);
+
   const query = (params.get("q") ?? "").trim();
   const page = readPage(params.get("page"));
+
   const repository = useQuery({
     queryKey: ["repository", namespace, name],
     queryFn: ({ signal }) => api.repository(namespace, name, signal),
   });
+
   const tags = useQuery({
     queryKey: ["tags", namespace, name, query, page],
     queryFn: ({ signal }) => api.tags(namespace, name, query, page, signal),
   });
-  function updateTags(q: string, next: number) {
+
+  function updateTags(q: string, next: number, replace = false) {
     const updated = new URLSearchParams();
     const from = params.get("from");
-    if (from) updated.set("from", safeReturnTo(from));
-    if (q) updated.set("q", q);
-    if (next > 1) updated.set("page", String(next));
-    setParams(updated);
+
+    if (from) {
+      updated.set("from", safeReturnTo(from));
+    }
+
+    if (q) {
+      updated.set("q", q);
+    }
+
+    if (next > 1) {
+      updated.set("page", String(next));
+    }
+
+    setParams(updated, { replace });
   }
+
   return (
     <div className="details-page">
       <Link className="back-link" to={safeReturnTo(params.get("from"))}>
@@ -136,6 +102,7 @@ export function Details() {
           </div>
         </section>
       )}
+
       <section className="tags-section" aria-labelledby="tags-title">
         <div className="section-heading">
           <div>
@@ -143,7 +110,9 @@ export function Details() {
             <h2 id="tags-title" ref={tagsHeading} tabIndex={-1}>
               Image tags
             </h2>
-            <p>Find a tag and copy its pull command.</p>
+            <p>
+              Tags update as you type. Find a version and copy its pull command.
+            </p>
           </div>
         </div>
         <SearchForm
@@ -151,6 +120,7 @@ export function Details() {
           label="Search tags"
           placeholder="Search all tags, e.g. alpine"
           onSearch={(value) => updateTags(value, 1)}
+          onDebouncedSearch={(value) => updateTags(value, 1, true)}
         />
         <p className="size-note">
           Sizes are reported image sizes for <code>linux/amd64</code>, not the
@@ -189,6 +159,7 @@ export function Details() {
                   <tbody>
                     {tags.data.items.map((tag) => {
                       const command = pullCommand(namespace, name, tag.name);
+
                       return (
                         <tr key={tag.name}>
                           <td>

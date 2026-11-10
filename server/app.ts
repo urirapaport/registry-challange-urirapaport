@@ -9,14 +9,21 @@ import { pageNumber, queryText, repositorySegment } from "./validation.js";
 export function createApp(hub = new DockerHub()) {
   const app = express();
   app.disable("x-powered-by");
+
   app.get("/api/popular", async (_req, res) => {
     res.json(await hub.popular());
   });
+
   app.get("/api/search", async (req, res) => {
     const query = queryText(req.query.q);
-    if (!query) throw new ApiError(400, "Enter a repository keyword.");
+
+    if (!query) {
+      throw new ApiError(400, "Enter a repository keyword.");
+    }
+
     res.json(await hub.search(query, pageNumber(req.query.page)));
   });
+
   app.get("/api/repositories/:namespace/:name", async (req, res) => {
     res.json(
       await hub.repository(
@@ -25,6 +32,7 @@ export function createApp(hub = new DockerHub()) {
       ),
     );
   });
+
   app.get("/api/repositories/:namespace/:name/tags", async (req, res) => {
     res.json(
       await hub.tags(
@@ -35,17 +43,21 @@ export function createApp(hub = new DockerHub()) {
       ),
     );
   });
+
   app.use("/api", (_req, res) => {
     res.status(404).json({ message: "API route not found." });
   });
+
   const clientPath = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
     "../client",
   );
   app.use(express.static(clientPath));
+
   app.get("/{*path}", (_req, res) => {
     res.sendFile(path.join(clientPath, "index.html"));
   });
+
   const errorHandler: ErrorRequestHandler = (
     error: unknown,
     _req,
@@ -56,8 +68,12 @@ export function createApp(hub = new DockerHub()) {
       next(error);
       return;
     }
+
     if (error instanceof ApiError) {
-      if (error.retryAfter) res.setHeader("Retry-After", error.retryAfter);
+      if (error.retryAfter) {
+        res.setHeader("Retry-After", error.retryAfter);
+      }
+
       res
         .status(error.status)
         .json({ message: error.message, retryAfter: error.retryAfter });
@@ -65,6 +81,8 @@ export function createApp(hub = new DockerHub()) {
       res.status(500).json({ message: "An unexpected server error occurred." });
     }
   };
+
   app.use(errorHandler);
+
   return app;
 }

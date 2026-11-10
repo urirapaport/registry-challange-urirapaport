@@ -1,0 +1,97 @@
+import { useEffect, useId, useRef, useState } from "react";
+import type { FormEvent } from "react";
+
+export function SearchForm({
+  initial,
+  label,
+  placeholder,
+  onSearch,
+  onDebouncedSearch,
+}: {
+  initial: string;
+  label: string;
+  placeholder: string;
+  onSearch: (value: string) => void;
+  onDebouncedSearch?: (value: string) => void;
+}) {
+  const [value, setValue] = useState(initial);
+  const [previousInitial, setPreviousInitial] = useState(initial);
+  const inputId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const debounceTimer = useRef<number | undefined>(undefined);
+
+  // Synchronize URL navigation without remounting the focused input.
+  if (previousInitial !== initial) {
+    setPreviousInitial(initial);
+    setValue(initial);
+  }
+
+  useEffect(() => {
+    if (!onDebouncedSearch || value.trim() === initial) {
+      return;
+    }
+
+    debounceTimer.current = window.setTimeout(() => {
+      onDebouncedSearch(value.trim());
+    }, 500);
+
+    return () => window.clearTimeout(debounceTimer.current);
+  }, [value, initial, onDebouncedSearch]);
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    window.clearTimeout(debounceTimer.current);
+    onSearch(value.trim());
+  }
+
+  return (
+    <form
+      className="search-form"
+      onSubmit={submit}
+      role="search"
+      aria-label={label}
+    >
+      <label className="sr-only" htmlFor={inputId}>
+        {label}
+      </label>
+      <span className="search-icon" aria-hidden="true">
+        ⌕
+      </span>
+      <input
+        ref={inputRef}
+        id={inputId}
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        placeholder={placeholder}
+        maxLength={100}
+        autoComplete="off"
+        autoCapitalize="none"
+        spellCheck={false}
+        enterKeyHint="search"
+        type="search"
+      />
+      {value && (
+        <button
+          className="clear-input"
+          type="button"
+          aria-label={
+            label === "Search tags"
+              ? "Clear tag filter"
+              : "Clear repository search"
+          }
+          onClick={() => {
+            window.clearTimeout(debounceTimer.current);
+            setValue("");
+            onSearch("");
+            inputRef.current?.focus();
+          }}
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+      )}
+      <button className="primary" type="submit">
+        Search <span aria-hidden="true">→</span>
+      </button>
+    </form>
+  );
+}

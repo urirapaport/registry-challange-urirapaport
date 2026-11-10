@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { normalizeSearch, normalizeTag } from "../server/dockerHub";
 import { pullCommand } from "../shared/types";
-import { formatDate, formatSize, safeReturnTo } from "../src/format";
+import { formatDate, formatSize, safeReturnTo } from "../src/utils/format";
 import { pageNumber, queryText, repositorySegment } from "../server/validation";
 
 describe("repository identity and commands", () => {

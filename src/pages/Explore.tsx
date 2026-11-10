@@ -1,31 +1,33 @@
 import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
-import { api } from "./api";
-import {
-  EmptyState,
-  ErrorState,
-  Loading,
-  Pagination,
-  RepositoryCard,
-  SearchForm,
-} from "./components";
-import { readPage } from "./format";
+import { api } from "../api/client";
+import { EmptyState } from "../components/EmptyState";
+import { ErrorState } from "../components/ErrorState";
+import { Loading } from "../components/Loading";
+import { Pagination } from "../components/Pagination";
+import { RepositoryCard } from "../components/RepositoryCard";
+import { SearchForm } from "../components/SearchForm";
+import { readPage } from "../utils/format";
 
 export function Explore() {
   const [params, setParams] = useSearchParams();
   const location = useLocation();
   const resultsHeading = useRef<HTMLHeadingElement>(null);
+
   const query = (params.get("q") ?? "").trim();
   const page = readPage(params.get("page"));
+
   const repositories = useQuery({
     queryKey: query ? ["search", query, page] : ["popular"],
     queryFn: ({ signal }) =>
       query ? api.search(query, page, signal) : api.popular(signal),
   });
+
   function changeSearch(value: string) {
     setParams(value ? { q: value } : {});
   }
+
   return (
     <>
       <section className="hero">
@@ -65,6 +67,7 @@ export function Explore() {
           <div className="code-cursor" />
         </div>
       </section>
+
       <section className="results" aria-labelledby="results-title">
         <div className="section-heading">
           <div>
