@@ -89,7 +89,7 @@ The client is grouped by responsibility: `app/` composes the application, `pages
 ## Decisions and limits
 
 - Repository search is explicitly submitted. Tag search runs after a 500 ms typing pause; Enter and Search submit immediately. Automatic tag updates replace the current history entry rather than adding one per pause. Query and page live in the URL; a new query resets pagination. Detail links preserve the explore URL.
-- Clear buttons restore input focus; pagination returns focus to the results. Copy confirmation clears after 2.5 seconds, and a selected read-only field supports manual copying when clipboard access fails.
+- Clear buttons restore input focus; pagination returns focus to the results. Repository search and tag results have pagination above and below their lists. Repository cards remain visible but inactive while another page of the same search loads, with an updating status and disabled pagination. Copy confirmation clears after 2.5 seconds, and a selected read-only field supports manual copying when clipboard access fails.
 - Tag results stay visible while a new filter or page loads for the same repository, with an updating status and temporarily disabled copy/pagination controls. The input clear button is the single tag-search reset action.
 - Details and tags load independently. Loading, empty, not-found and retry states are visible. Clipboard success appears only after writing; failures leave a selectable command.
 - Tag search is server-side across tags, not a filter of the visible page. Repositories use 12 rows per page and tags use 10. No exhaustive prefetch.

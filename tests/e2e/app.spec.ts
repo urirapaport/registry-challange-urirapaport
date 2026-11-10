@@ -1,6 +1,114 @@
 import { expect, test } from "@playwright/test";
 import type { Page, Route } from "@playwright/test";
 
+for (const width of [375, 1280]) {
+  test(`repository pagination retains layout and synchronizes controls at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    let releasePage: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      releasePage = resolve;
+    });
+    await page.route("**/api/search?*", async (route) => {
+      const params = new URL(route.request().url()).searchParams;
+      const number = Number(params.get("page") || 1);
+      if (number === 2) await gate;
+      const empty = params.get("q") === "empty";
+      await reply(route, {
+        items: empty
+          ? []
+          : Array.from({ length: number === 3 ? 1 : 12 }, (_, i) =>
+              repo(`result-${number}-${i}`, "demo"),
+            ),
+        count: empty ? 0 : 25,
+        hasNext: !empty && number < 3,
+      });
+    });
+    await page.goto("/?q=demo");
+    const top = page.getByRole("navigation", {
+      name: "Repository pages above results",
+    });
+    const bottom = page.getByRole("navigation", {
+      name: "Repository pages below results",
+    });
+    const grid = page.locator(".repo-grid");
+    await expect(page.locator(".repo-card")).toHaveCount(12);
+    await expect(top.getByRole("button", { name: "Previous" })).toBeDisabled();
+    const dimensions = () =>
+      page.evaluate(() => {
+        const grid = document
+          .querySelector(".repo-grid")!
+          .getBoundingClientRect();
+        return {
+          height: grid.height,
+          top: grid.top + scrollY,
+          footer:
+            document.querySelector("footer")!.getBoundingClientRect().top +
+            scrollY,
+        };
+      });
+    const before = await dimensions();
+    await top.getByRole("button", { name: "Next" }).click();
+    await expect(page.locator(".result-count")).toHaveText(
+      "Updating repositories…",
+    );
+    await expect(grid).toHaveAttribute("aria-busy", "true");
+    await expect(grid).toHaveAttribute("inert", "");
+    await expect(page.locator(".repo-card")).toHaveCount(12);
+    await expect(page.locator(".search-spinner")).toBeVisible();
+    for (const controls of [top, bottom]) {
+      await expect(
+        controls.getByRole("button", { name: "Next" }),
+      ).toBeDisabled();
+      await expect(
+        controls.getByRole("button", { name: "Previous" }),
+      ).toBeDisabled();
+    }
+    const during = await dimensions();
+    expect(during.height).toBeCloseTo(before.height, 0);
+    expect(during.top).toBeCloseTo(before.top, 0);
+    expect(during.footer).toBeCloseTo(before.footer, 0);
+    releasePage();
+    await expect(grid).toHaveAttribute("aria-busy", "false");
+    await expect(grid).not.toHaveAttribute("inert");
+    await expect(page.locator(".repo-card").first()).toContainText(
+      "result-2-0",
+    );
+    await expect(bottom).toContainText("Page 2");
+    await top.getByRole("button", { name: "Next" }).click();
+    await expect(page.locator(".repo-card")).toHaveCount(1);
+    await expect(bottom).toContainText("Page 3");
+    await expect(top.getByRole("button", { name: "Next" })).toBeDisabled();
+    await expect(bottom.getByRole("button", { name: "Next" })).toBeDisabled();
+    await bottom.getByRole("button", { name: "Previous" }).click();
+    await expect(top).toContainText("Page 2");
+    await page.reload();
+    await expect(top).toContainText("Page 2");
+    await page.screenshot({
+      path: `test-results/repository-pagination-${width}.png`,
+      fullPage: true,
+    });
+    const { default: AxeBuilder } = await import("@axe-core/playwright");
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+          .analyze()
+      ).violations,
+    ).toEqual([]);
+    await page.getByRole("searchbox").fill("empty");
+    await page.getByRole("searchbox").press("Enter");
+    await expect(
+      page.getByRole("heading", { name: "No repositories found" }),
+    ).toBeVisible();
+    await expect(page.locator(".repo-card")).toHaveCount(0);
+    await page.getByRole("button", { name: "Clear repository search" }).click();
+    await expect(page.locator(".repo-card")).toHaveCount(10);
+    await expect(page.locator(".pagination")).toHaveCount(0);
+  });
+}
+
 const names = [
   "nginx",
   "redis",

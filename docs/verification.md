@@ -8,7 +8,7 @@ Executed November 9, 2026, on Windows with Node 24.18.0. Commands are in README.
 | Lint              | `npm run lint` passed without disabled rules.                                                                                        |
 | Unit/integration  | `npm test`: 37 tests passed, including identity, commands, sizes, input, error mapping, cooldown, caching and fixed upstream origin. |
 | Build             | `npm run build` passed. Express serves the built client and API.                                                                     |
-| Chromium fixtures | `npm run test:e2e`: 17 scenarios passed against production assets with mocked API responses.                                         |
+| Chromium fixtures | `npm run test:e2e`: 19 scenarios passed against production assets with mocked API responses.                                         |
 | Live API          | `npm run smoke` passed: ten showcase entries, search/tag pagination, empty results, namespaced details and 404.                      |
 | Live browser      | Ten actual showcase entries/logos, nginx search, official details, tags and exact clipboard content inspected. Final checks below.   |
 
@@ -50,7 +50,7 @@ The follow-up review added one-click clear buttons that restore input focus, pag
 
 Contrast findings in secondary text and table headings were corrected. Long descriptions exposed a minimum-width issue in the single-column card grid; a zero-minimum grid track and wrapping fix it. Buttons and search/manual-copy fields have a minimum 44px height; mobile inputs use 16px text to avoid automatic focus zoom in browsers that apply it.
 
-The final suite contains 37 unit/server tests and 17 browser scenarios. Automated accessibility scans do not prove complete accessibility. Screen-reader evaluation and Firefox/Safari checks remain outside the verification performed. Interactive visual tooling became unavailable partway through the follow-up; the final responsive and contrast checks used the automated Chromium suite.
+The final suite contains 37 unit/server tests and 19 browser scenarios. Automated accessibility scans do not prove complete accessibility. Screen-reader evaluation and Firefox/Safari checks remain outside the verification performed. Interactive visual tooling became unavailable partway through the follow-up; the final responsive and contrast checks used the automated Chromium suite.
 
 ## Tag search debounce verification
 
@@ -83,3 +83,7 @@ Reviewed the summary against the final source and existing successful build/lint
 The live smoke passed again. Fresh Chromium checks verified ten showcase cards, repository search, official and namespaced details, and exact clipboard text without page errors. An initial browser script timed out while navigating immediately after search; rerunning with an explicit search transition wait and DOM readiness succeeded. This was not treated as a passed first attempt.
 
 Summary wording now distinguishes upstream data from cached showcase data, validates only consumed response fields, limits retry disabling to the affected view, describes tests as scenario checks rather than proofs, and dates dependency findings. Historical lessons are supported by the earlier verification log; they are not presented as newly reproduced defects. No Docker images were pulled or run; Firefox/Safari and complete screen-reader testing remain outside the verified scope.
+
+## Repository pagination refinement
+
+Build, typecheck, lint, 37 unit/server tests and 19 Chromium scenarios passed. Repository search results now have synchronized controls above and below the grid. While a different page of the same search loads, existing cards retain their height and document position, become inert, and show an updating status and search spinner; both pagination controls disable. Mobile and desktop scenarios check grid/footer stability during a delayed response, page-three boundaries, top/bottom navigation, reload, empty searches, clearing to the ten curated picks and accessibility. New search terms and the showcase do not reuse unrelated placeholder cards. No backend changes were needed.

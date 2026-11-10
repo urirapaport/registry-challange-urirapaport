@@ -26,6 +26,13 @@ export function PlatformSizes({ platforms }: { platforms: PlatformImage[] }) {
 
   return (
     <div>
+      <div
+        className="platform-size-heading mobile-platform-heading"
+        aria-hidden="true"
+      >
+        <span>PLATFORM</span>
+        <span>SIZE</span>
+      </div>
       {sizes(platforms.slice(0, 2))}
       {platforms.length > 2 && (
         <details className="more-platforms">

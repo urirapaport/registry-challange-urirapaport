@@ -22,10 +22,22 @@ export function Explore() {
     queryKey: query ? ["search", query, page] : ["popular"],
     queryFn: ({ signal }) =>
       query ? api.search(query, page, signal) : api.popular(signal),
+    placeholderData: (previousData, previousQuery) =>
+      query &&
+      previousQuery?.queryKey[0] === "search" &&
+      previousQuery.queryKey[1] === query
+        ? previousData
+        : undefined,
   });
 
   function changeSearch(value: string) {
     setParams(value ? { q: value } : {});
+  }
+
+  function changePage(next: number) {
+    setParams({ q: query, page: String(next) });
+    resultsHeading.current?.focus({ preventScroll: true });
+    resultsHeading.current?.scrollIntoView({ block: "start" });
   }
 
   return (
@@ -48,6 +60,7 @@ export function Explore() {
           label="Search repositories"
           placeholder="Search repositories, e.g. nginx"
           onSearch={changeSearch}
+          isSearching={Boolean(query) && repositories.isFetching}
         />
         <div className="suggestions">
           <span>Start with</span>
@@ -99,12 +112,27 @@ export function Explore() {
         ) : (
           <>
             <p className="result-count" role="status">
-              {query
-                ? `${repositories.data.count.toLocaleString("en")} repositories · Page ${page}`
-                : "10 curated picks · Not a live ranking"}
+              {repositories.isPlaceholderData
+                ? "Updating repositories…"
+                : query
+                  ? `${repositories.data.count.toLocaleString("en")} repositories · Page ${page}`
+                  : "10 curated picks · Not a live ranking"}
             </p>
+            {query && (
+              <Pagination
+                page={page}
+                hasNext={repositories.data.hasNext}
+                disabled={repositories.isPlaceholderData}
+                label="Repository pages above results"
+                onChange={changePage}
+              />
+            )}
             {repositories.data.items.length ? (
-              <div className="repo-grid">
+              <div
+                className="repo-grid"
+                aria-busy={repositories.isPlaceholderData}
+                inert={repositories.isPlaceholderData}
+              >
                 {repositories.data.items.map((repository) => (
                   <RepositoryCard
                     key={`${repository.namespace}/${repository.name}`}
@@ -123,11 +151,9 @@ export function Explore() {
               <Pagination
                 page={page}
                 hasNext={repositories.data.hasNext}
-                onChange={(next) => {
-                  setParams({ q: query, page: String(next) });
-                  resultsHeading.current?.focus({ preventScroll: true });
-                  resultsHeading.current?.scrollIntoView({ block: "start" });
-                }}
+                disabled={repositories.isPlaceholderData}
+                label="Repository pages below results"
+                onChange={changePage}
               />
             )}
           </>

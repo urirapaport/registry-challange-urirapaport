@@ -162,7 +162,12 @@ export function Details() {
                     <tr>
                       <th scope="col">TAG / PULL COMMAND</th>
                       <th scope="col">UPDATED (UTC)</th>
-                      <th scope="col">PLATFORM / SIZE</th>
+                      <th scope="col">
+                        <div className="platform-size-heading">
+                          <span>PLATFORM</span>
+                          <span>SIZE</span>
+                        </div>
+                      </th>
                       <th scope="col">
                         <span className="sr-only">Copy command</span>
                       </th>
