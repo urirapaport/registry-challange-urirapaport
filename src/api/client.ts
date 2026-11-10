@@ -32,6 +32,12 @@ const repositoryPath = (namespace: string, name: string) =>
   `repositories/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`;
 
 export const api = {
+  publisherAvatar: (namespace: string, signal: AbortSignal) =>
+    get<{ url: string | null }>(
+      `publishers/${encodeURIComponent(namespace)}/avatar`,
+      signal,
+    ),
+
   popular: (signal: AbortSignal) => get<Page<Repository>>("popular", signal),
 
   search: (q: string, page: number, signal: AbortSignal) =>

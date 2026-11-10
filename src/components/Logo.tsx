@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../api/client";
 import type { Repository } from "../../shared/types";
 
 const logos = new Set([
@@ -18,13 +20,25 @@ export function Logo({ repository }: { repository: Repository }) {
   const [failed, setFailed] = useState(false);
   const hasLogo =
     repository.namespace === "library" && logos.has(repository.name);
+  const avatar = useQuery({
+    queryKey: ["publisher-avatar", repository.namespace],
+    queryFn: ({ signal }) => api.publisherAvatar(repository.namespace, signal),
+    enabled: !hasLogo,
+    staleTime: (query) => (query.state.data?.url ? 300_000 : 30_000),
+  });
+  const source = hasLogo ? `/logos/${repository.name}.svg` : avatar.data?.url;
 
   return (
     <span className="logo">
-      {hasLogo && !failed ? (
+      {source && !failed ? (
         <img
-          src={`/logos/${repository.name}.svg`}
-          alt={`${repository.name} logo`}
+          src={source}
+          alt={
+            hasLogo
+              ? `${repository.name} logo`
+              : `${repository.owner} publisher avatar`
+          }
+          referrerPolicy="no-referrer"
           onError={() => setFailed(true)}
           width="38"
           height="38"

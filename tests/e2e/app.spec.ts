@@ -137,6 +137,7 @@ async function mockApi(page: Page) {
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const pageNumber = url.searchParams.get("page") ?? "1";
+    if (url.pathname.endsWith("/avatar")) return reply(route, { url: null });
     if (url.pathname.endsWith("/popular"))
       return reply(route, {
         items: names.map((name) => repo(name)),
@@ -865,3 +866,39 @@ for (const width of [375, 1280]) {
     await expect(page).toHaveURL("/?q=nginx");
   });
 }
+
+test("publisher avatars load independently and failed images fall back", async ({
+  page,
+}) => {
+  await page.route("**/api/search?**", (route) =>
+    reply(route, {
+      items: [repo("one", "fluent"), repo("two", "fluent")],
+      count: 2,
+      hasNext: false,
+    }),
+  );
+  let avatarRequests = 0;
+  await page.route("**/api/publishers/fluent/avatar", (route) => {
+    avatarRequests++;
+    return reply(route, {
+      url: "https://www.gravatar.com/avatar/abc123?d=404",
+    });
+  });
+  await page.route("https://www.gravatar.com/**", (route) =>
+    route.fulfill({
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="green"/></svg>',
+    }),
+  );
+  await page.goto("/?q=fluent");
+  await expect(
+    page.getByRole("img", { name: "fluent publisher avatar" }),
+  ).toHaveCount(2);
+  expect(avatarRequests).toBe(1);
+  await page.route("https://www.gravatar.com/**", (route) => route.abort());
+  await page.reload();
+  await expect(
+    page.getByRole("img", { name: "No logo available for fluent/one" }),
+  ).toBeVisible();
+  await expect(page.locator(".repo-card")).toHaveCount(2);
+});

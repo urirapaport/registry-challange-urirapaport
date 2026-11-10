@@ -3,12 +3,21 @@ import type { ErrorRequestHandler } from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DockerHub } from "./dockerHub.js";
+import { PublisherImages } from "./publisherImages.js";
 import { ApiError } from "./errors.js";
 import { pageNumber, queryText, repositorySegment } from "./validation.js";
 
-export function createApp(hub = new DockerHub()) {
+export function createApp(
+  hub = new DockerHub(),
+  publisherImages = new PublisherImages(),
+) {
   const app = express();
   app.disable("x-powered-by");
+
+  app.get("/api/publishers/:namespace/avatar", async (req, res) => {
+    const namespace = repositorySegment(req.params.namespace);
+    res.json({ url: await publisherImages.get(namespace) });
+  });
 
   app.get("/api/popular", async (_req, res) => {
     res.json(await hub.popular());
