@@ -1,6 +1,6 @@
 import { platformLabel } from "../src/utils/platforms";
 import { describe, expect, it } from "vitest";
-import { normalizeSearch, normalizeTag } from "../server/dockerHub";
+import { normalizeSearch, normalizeTag } from "../server/dockerHubNormalizers";
 import { pullCommand } from "../shared/types";
 import { formatDate, formatSize, safeReturnTo } from "../src/utils/format";
 import { pageNumber, queryText, repositorySegment } from "../server/validation";

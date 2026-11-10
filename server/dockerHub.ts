@@ -1,110 +1,8 @@
-import { z } from "zod";
+import type { z } from "zod";
 import type { Page, Repository, Tag } from "../shared/types.js";
 import { ApiError } from "./errors.js";
-
-const optionalText = z.string().nullish();
-
-const searchItem = z.object({
-  repo_name: z.string(),
-  repo_owner: optionalText,
-  is_official: z.boolean().optional(),
-  short_description: optionalText,
-});
-
-const details = z.object({
-  name: z.string(),
-  namespace: z.string(),
-  description: optionalText,
-  last_updated: optionalText,
-});
-
-const image = z.object({
-  architecture: optionalText,
-  os: optionalText,
-  variant: optionalText,
-  os_version: optionalText,
-  size: z.number().nullish(),
-});
-
-const tag = z.object({
-  name: z.string().regex(/^[\w][\w.-]{0,127}$/),
-  last_updated: optionalText,
-  images: z.array(image).nullish(),
-});
-
-function pageSchema<T extends z.ZodType>(item: T) {
-  return z.object({
-    count: z.number().int().nonnegative(),
-    next: z.string().nullish(),
-    results: z.array(item),
-  });
-}
-
-export function normalizeSearch(item: z.infer<typeof searchItem>): Repository {
-  const parts = item.repo_name.split("/");
-  const name = parts.at(-1)!;
-  const namespace =
-    parts.length === 2
-      ? parts[0]
-      : item.is_official
-        ? "library"
-        : item.repo_owner;
-
-  // A missing nonofficial owner cannot safely be guessed to mean "library".
-  if (
-    !namespace ||
-    parts.length > 2 ||
-    !/^[a-z0-9][a-z0-9._-]*$/.test(namespace) ||
-    !/^[a-z0-9][a-z0-9._-]*$/.test(name)
-  ) {
-    throw new ApiError(
-      502,
-      "Docker Hub returned an unrecognized repository identity.",
-    );
-  }
-
-  return {
-    namespace,
-    name,
-    fullName: namespace === "library" ? name : `${namespace}/${name}`,
-    owner: namespace,
-    official: namespace === "library",
-    description: item.short_description ?? "",
-    updatedAt: null,
-  };
-}
-
-export function normalizeTag(item: z.infer<typeof tag>): Tag {
-  const platforms = (item.images ?? []).flatMap((entry) => {
-    const os = entry.os?.trim().toLowerCase();
-    const architecture = entry.architecture?.trim().toLowerCase();
-
-    if (
-      !os ||
-      !architecture ||
-      os === "unknown" ||
-      architecture === "unknown"
-    ) {
-      return [];
-    }
-
-    return [
-      {
-        os,
-        architecture,
-        variant: entry.variant?.trim() || null,
-        osVersion: entry.os_version?.trim() || null,
-        size: entry.size != null && entry.size >= 0 ? entry.size : null,
-      },
-    ];
-  });
-
-  return {
-    name: item.name,
-    updatedAt: item.last_updated ?? null,
-    platforms,
-  };
-}
+import { details, pageSchema, searchItem, tag } from "./dockerHubSchemas.js";
+import { normalizeSearch, normalizeTag } from "./dockerHubNormalizers.js";
 
 export const popularNames = [
   "nginx",
@@ -151,16 +49,7 @@ export class DockerHub {
       }
 
       if (response.status === 429) {
-        const header = response.headers.get("retry-after");
-        const seconds =
-          header && /^\d+$/.test(header)
-            ? Number(header)
-            : header
-              ? Math.ceil((Date.parse(header) - Date.now()) / 1000)
-              : 60;
-        const delay = Number.isFinite(seconds)
-          ? Math.max(1, Math.min(seconds, 3600))
-          : 60;
+        const delay = retryDelay(response.headers.get("retry-after"));
 
         this.cooldownUntil = Date.now() + delay * 1000;
 
@@ -296,4 +185,15 @@ export class DockerHub {
   private path(namespace: string, name: string): string {
     return `namespaces/${encodeURIComponent(namespace)}/repositories/${encodeURIComponent(name)}`;
   }
+}
+
+function retryDelay(header: string | null): number {
+  const seconds =
+    header && /^\d+$/.test(header)
+      ? Number(header)
+      : header
+        ? Math.ceil((Date.parse(header) - Date.now()) / 1000)
+        : 60;
+
+  return Number.isFinite(seconds) ? Math.max(1, Math.min(seconds, 3600)) : 60;
 }

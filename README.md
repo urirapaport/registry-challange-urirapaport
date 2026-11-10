@@ -79,7 +79,9 @@ React pages -> src/api/client.ts -> explicit Express routes
 | `src/utils/format.ts`                            | Dates, sizes and URL helpers                                                    |
 | `shared/types.ts`                                | Small UI data contracts and pull command generation                             |
 | `server/app.ts`, `server/validation.ts`          | Four read routes, bounded input, safe errors and production static serving      |
-| `server/dockerHub.ts`                            | Docker endpoints, Zod validation, normalization, timeout and limited caching    |
+| `server/dockerHub.ts`                            | Docker endpoints, timeout, error handling and limited caching                   |
+| `server/dockerHubSchemas.ts`                     | Runtime validation of Docker Hub responses                                      |
+| `server/dockerHubNormalizers.ts`                 | Conversion of upstream data to shared UI contracts                              |
 | `tests/`, `scripts/smoke.ts`                     | Deterministic tests and separate live check                                     |
 
 React Router handles deep links and query parameters. TanStack Query supplies keyed server state, cancellation and short-lived client caching, so old searches cannot replace new ones. Zod validates external responses. Express handles routing and local static serving. One package and two TypeScript configurations separate DOM and Node environments.
