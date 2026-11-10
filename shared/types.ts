@@ -11,6 +11,14 @@ export interface Repository {
 export interface Tag {
   name: string;
   updatedAt: string | null;
+  platforms: PlatformImage[];
+}
+
+export interface PlatformImage {
+  os: string;
+  architecture: string;
+  variant: string | null;
+  osVersion: string | null;
   size: number | null;
 }
 

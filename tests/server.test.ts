@@ -121,3 +121,39 @@ describe("server and Docker Hub boundary", () => {
     expect((await request(createApp()).get("/api/unknown")).status).toBe(404);
   });
 });
+
+it("returns per-platform sizes through the API without a hardcoded architecture", async () => {
+  const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+    json({
+      count: 1,
+      next: null,
+      results: [
+        {
+          name: "mixed",
+          full_size: 99999,
+          images: [
+            { os: "linux", architecture: "arm64", variant: "v8", size: 120 },
+            {
+              os: "windows",
+              architecture: "amd64",
+              os_version: "10.0.20348",
+              size: 300,
+            },
+            { os: "unknown", architecture: "unknown", size: 20 },
+          ],
+        },
+      ],
+    }),
+  );
+  const response = await request(createApp(new DockerHub(fetcher))).get(
+    "/api/repositories/library/example/tags",
+  );
+  expect(response.status).toBe(200);
+  expect(response.body.items[0].platforms).toHaveLength(2);
+  expect(response.body.items[0].platforms[1]).toMatchObject({
+    os: "windows",
+    size: 300,
+    osVersion: "10.0.20348",
+  });
+  expect(response.body.items[0]).not.toHaveProperty("size");
+});

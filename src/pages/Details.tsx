@@ -9,13 +9,9 @@ import { ErrorState } from "../components/ErrorState";
 import { Loading } from "../components/Loading";
 import { Logo } from "../components/Logo";
 import { Pagination } from "../components/Pagination";
+import { PlatformSizes } from "../components/PlatformSizes";
 import { SearchForm } from "../components/SearchForm";
-import {
-  formatDate,
-  formatSize,
-  readPage,
-  safeReturnTo,
-} from "../utils/format";
+import { formatDate, readPage, safeReturnTo } from "../utils/format";
 
 export function Details() {
   const { namespace = "", name = "" } = useParams();
@@ -57,6 +53,12 @@ export function Details() {
     }
 
     setParams(updated, { replace });
+  }
+
+  function changePage(next: number) {
+    updateTags(query, next);
+    tagsHeading.current?.focus({ preventScroll: true });
+    tagsHeading.current?.scrollIntoView({ block: "start" });
   }
 
   return (
@@ -129,8 +131,8 @@ export function Details() {
           isSearching={tags.isFetching}
         />
         <p className="size-note">
-          Sizes are reported image sizes for <code>linux/amd64</code>, not the
-          sum of all platforms. Your download may differ.
+          Each size belongs to one platform, not a combined download. Pull
+          commands use your Docker host's default platform.
         </p>
         {tags.isPending ? (
           <Loading label="Loading tags…" />
@@ -143,6 +145,13 @@ export function Details() {
                 ? "Updating tags…"
                 : `${tags.data.count.toLocaleString("en")} ${query ? "matching tags" : "tags"} · Page ${page}`}
             </p>
+            <Pagination
+              page={page}
+              hasNext={tags.data.hasNext}
+              disabled={tags.isPlaceholderData}
+              label="Tag pages above results"
+              onChange={changePage}
+            />
             {tags.data.items.length ? (
               <div
                 className="tag-table-wrap"
@@ -153,9 +162,7 @@ export function Details() {
                     <tr>
                       <th scope="col">TAG / PULL COMMAND</th>
                       <th scope="col">UPDATED (UTC)</th>
-                      <th scope="col">
-                        SIZE <span>linux/amd64</span>
-                      </th>
+                      <th scope="col">PLATFORM / SIZE</th>
                       <th scope="col">
                         <span className="sr-only">Copy command</span>
                       </th>
@@ -177,8 +184,8 @@ export function Details() {
                           >
                             {formatDate(tag.updatedAt)}
                           </td>
-                          <td data-label="Size · linux/amd64">
-                            {formatSize(tag.size)}
+                          <td className="platform-cell">
+                            <PlatformSizes platforms={tag.platforms} />
                           </td>
                           <td>
                             <CopyCommand
@@ -207,11 +214,8 @@ export function Details() {
               page={page}
               hasNext={tags.data.hasNext}
               disabled={tags.isPlaceholderData}
-              onChange={(next) => {
-                updateTags(query, next);
-                tagsHeading.current?.focus({ preventScroll: true });
-                tagsHeading.current?.scrollIntoView({ block: "start" });
-              }}
+              label="Tag pages below results"
+              onChange={changePage}
             />
           </>
         )}

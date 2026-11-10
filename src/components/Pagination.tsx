@@ -3,14 +3,16 @@ export function Pagination({
   hasNext,
   onChange,
   disabled = false,
+  label = "Pagination",
 }: {
   page: number;
   hasNext: boolean;
   onChange: (page: number) => void;
   disabled?: boolean;
+  label?: string;
 }) {
   return (
-    <nav className="pagination" aria-label="Pagination">
+    <nav className="pagination" aria-label={label}>
       <button
         disabled={disabled || page <= 1}
         onClick={() => onChange(page - 1)}

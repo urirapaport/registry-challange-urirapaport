@@ -18,7 +18,7 @@ Details and tags routes are documented. Search and the tag-name filter were not 
 
 **Popular images and logos.** The showcase selects nginx, Redis, PostgreSQL, Node.js, Python, MySQL, MongoDB, Ubuntu, Debian and Apache httpd. It is labeled as curated, not a measured global ranking. Descriptions and timestamps come from live requests. Ten Devicon logos are stored locally at a recorded source commit, with the MIT license and trademark attribution. Other results and failed images use an accessible initials fallback. This avoids decorative API requests; full logo coverage remains a limitation.
 
-**Sizes.** Multi-platform responses contain different sizes and unknown-platform entries. The UI uses only linux/amd64 image size, labels that policy, and shows Unavailable when absent. It does not sum architectures or substitute an unexplained full_size value. Binary units describe reported image bytes; cached layers and other platforms can change transfer size.
+**Sizes.** Multi-platform responses contain different sizes and unknown-platform entries. The UI lists each known platform and its size, including variants and Windows versions. Long lists expand within the row; missing sizes are unavailable. Tag pagination appears above and below the table. It does not sum architectures or substitute an unexplained full_size value. Binary units describe reported image bytes; cached layers and other platforms can change transfer size.
 
 ---
 
@@ -34,7 +34,7 @@ Details and tags routes are documented. Search and the tag-name filter were not 
 
 **Useful additions.** Server-side tag search and pagination help with large repositories. Visible commands make copying transparent and remain selectable if clipboard permission fails. Success appears only after writing and clears after 2.5 seconds. A selected read-only field supports manual copying if clipboard access fails. Clear controls preserve input focus; pagination returns focus to the results. Official-image labels, owners, UTC dates, platform labels, focus styles and mobile tag layout reduce ambiguity and support keyboard use.
 
-**Deliberate limits.** No accounts, database, favorites, analytics, security scoring or deployment. The app does not fetch all tags, infer stability from latest, render upstream HTML descriptions, or claim its showcase is a live ranking. A platform selector and full search-logo coverage were deferred to keep implementation focused and explainable.
+**Deliberate limits.** No accounts, database, favorites, analytics, security scoring or deployment. The app does not fetch all tags, infer stability from latest, render upstream HTML descriptions, or claim its showcase is a live ranking. Full search-logo coverage and repository-wide platform filtering remain deferred. Unreliable upstream platform filters are not exposed; all known platforms are displayed within each tag.
 
 ---
 
@@ -48,7 +48,7 @@ Details and tags routes are documented. Search and the tag-name filter were not 
 
 **Remaining risks.** Observed endpoints can change; validation makes incompatible responses recoverable but cannot preserve a removed API. Tags and pagination are mutable. Logos cover ten projects. Keyboard and responsive checks do not constitute a complete screen-reader audit or cross-browser certification. Development tooling has moderate transitive minimatch audit findings; production dependencies have a clean audit. No forced major override was used to hide the tooling findings.
 
-**With more time.** Add a platform selector with honest size semantics, partial showcase recovery, broader verified logos, contract monitoring, and screen-reader/Firefox/Safari checks. Before internet hosting, add application-level request limiting and operational monitoring.
+**With more time.** Add repository-wide filtering by operating system and CPU architecture, with accurate counts and pagination. First verify reliable upstream filtering or design a bounded indexing strategy: live API probes returned inconsistent matches and counts, so filtering only the loaded page would mislead users. Also improve partial showcase recovery, logo coverage, contract monitoring and screen-reader/Firefox/Safari testing. Before internet hosting, add application-level request limiting and operational monitoring.
 
 **AI assistance.** AI assisted investigation, code, tests, visual review and documentation. Generated output was checked with compiler/lint tools, fixture tests, real API calls and browser interactions. These checks do not replace the candidate's responsibility to understand the solution; no claim of manual line-by-line candidate review is made.
 

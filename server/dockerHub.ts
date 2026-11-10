@@ -21,6 +21,8 @@ const details = z.object({
 const image = z.object({
   architecture: optionalText,
   os: optionalText,
+  variant: optionalText,
+  os_version: optionalText,
   size: z.number().nullish(),
 });
 
@@ -73,18 +75,34 @@ export function normalizeSearch(item: z.infer<typeof searchItem>): Repository {
 }
 
 export function normalizeTag(item: z.infer<typeof tag>): Tag {
-  const size = item.images?.find(
-    (entry) =>
-      entry.os === "linux" &&
-      entry.architecture === "amd64" &&
-      entry.size != null &&
-      entry.size >= 0,
-  )?.size;
+  const platforms = (item.images ?? []).flatMap((entry) => {
+    const os = entry.os?.trim().toLowerCase();
+    const architecture = entry.architecture?.trim().toLowerCase();
+
+    if (
+      !os ||
+      !architecture ||
+      os === "unknown" ||
+      architecture === "unknown"
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        os,
+        architecture,
+        variant: entry.variant?.trim() || null,
+        osVersion: entry.os_version?.trim() || null,
+        size: entry.size != null && entry.size >= 0 ? entry.size : null,
+      },
+    ];
+  });
 
   return {
     name: item.name,
     updatedAt: item.last_updated ?? null,
-    size: size ?? null,
+    platforms,
   };
 }
 

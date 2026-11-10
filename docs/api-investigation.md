@@ -32,7 +32,7 @@ The [details documentation](https://docs.docker.com/reference/api/hub/latest/ope
 
 For sampled `stable-trixie-perl`, `full_size` was 75,777,314 bytes. `images` contained several platform sizes and architecture/OS `unknown` entries; linux/amd64 was also 75,777,314 bytes. One equality does not establish universal `full_size` semantics.
 
-Policy: use only `images[].size` for `os=linux, architecture=amd64`, in binary units. Label the platform. Do not sum platforms, use unknown entries, or substitute `full_size`. Missing is `Unavailable`; genuine zero remains `0 B`. This is reported image size, not a transfer prediction with cached layers.
+Policy (updated November 10): retain every known OS/architecture entry in `images`, with its variant, OS version and size in binary units. Display all known platforms per tag, expanding long lists without hiding tags or changing upstream pagination. No platform selector is exposed. Live nginx and hello-world samples confirmed Linux, ARM variants and Windows versions. Do not sum platforms, use unknown entries, or substitute `full_size`. Missing is `Unavailable`; genuine zero remains `0 B`. This is reported image size, not a transfer prediction with cached layers.
 
 ## Showcase and logos
 
@@ -47,3 +47,7 @@ Requests with `Origin: http://localhost:5173` had no `Access-Control-Allow-Origi
 Node's default CA store could not verify the local TLS chain. Node 24's `--use-system-ca` succeeded. This is an optional environment setting, not application code; verification stays enabled.
 
 The adapter has a ten-second timeout, Zod checks, safe errors and no automatic retries. A 429 sets a process-wide cooldown using `Retry-After` (60 seconds if absent; at most one hour). Pagination converts `next` to a boolean and never follows upstream-supplied URLs. Fixed page sizes: 12 repositories, 10 tags. Page numbers: 1 to 9,999.
+
+## Platform filtering investigation (November 10)
+
+Docker's official hub-mcp source accepts `os` and `architecture` for tag listing. Direct anonymous requests to both legacy and namespaced routes were inconsistent: hello-world with `os=linux` reported count 2 but returned ten tags including Windows-only images; nginx with `os=windows` returned Linux-only tags. Architecture filtering also returned mismatches. Tag name filtering still returned the expected match. These observations are not a universal claim that filtering is unsupported, but prevent relying on it here. The app therefore displays all known platforms without exposing a misleading filter or fetching every tag. Source: https://github.com/docker/hub-mcp/blob/main/src/repos.ts

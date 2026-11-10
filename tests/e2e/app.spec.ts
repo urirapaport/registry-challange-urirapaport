@@ -54,7 +54,15 @@ async function mockApi(page: Page) {
           {
             name: pageNumber === "1" ? "1.2-alpine" : "1.1-alpine",
             updatedAt: "2026-11-01T12:00:00Z",
-            size: 1048576,
+            platforms: [
+              {
+                os: "linux",
+                architecture: "amd64",
+                variant: null,
+                osVersion: null,
+                size: 1048576,
+              },
+            ],
           },
         ],
         count: 11,
@@ -83,7 +91,7 @@ test("showcase, explicit search, pagination, details, exact clipboard and return
   await expect(page.locator(".repo-card")).toHaveCount(10);
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await expect(page).toHaveURL(/q=nginx/);
-  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Next" }).first().click();
   await page
     .getByRole("link")
     .filter({
@@ -131,7 +139,7 @@ test("official pull command, tag pagination, tag search reset and copy failure",
   await expect
     .poll(() => page.evaluate(() => navigator.clipboard.readText()))
     .toBe("docker pull nginx:1.2-alpine");
-  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Next" }).first().click();
   await expect(
     page.getByText("docker pull nginx:1.1-alpine", { exact: true }),
   ).toBeVisible();
@@ -264,11 +272,13 @@ test("clear actions preserve input focus and pagination returns to results", asy
   await expect(
     page.getByRole("heading", { name: "nginx/nginx-ingress", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Previous" }).click();
+  await page.getByRole("button", { name: "Previous" }).first().click();
   await expect(
     page.getByRole("heading", { name: "Results for “nginx”" }),
   ).toBeFocused();
-  await expect(page.getByRole("button", { name: "Previous" })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Previous" }).first(),
+  ).toBeDisabled();
   await page.getByRole("button", { name: "Clear repository search" }).click();
   await expect(page.getByRole("searchbox")).toBeFocused();
   await expect(page.getByRole("searchbox")).toHaveValue("");
@@ -278,7 +288,7 @@ test("clear actions preserve input focus and pagination returns to results", asy
   await page.getByRole("link", { name: "Clear search ×", exact: true }).click();
   await expect(page).toHaveURL("/");
   await page.goto("/repositories/library/nginx?q=alpine&page=2");
-  await page.getByRole("button", { name: "Previous" }).click();
+  await page.getByRole("button", { name: "Previous" }).first().click();
   await expect(page.getByRole("heading", { name: "Image tags" })).toBeFocused();
   await page.getByRole("button", { name: "Clear tag filter" }).click();
   await expect(page.getByRole("searchbox")).toBeFocused();
@@ -425,14 +435,30 @@ test("long input and tag names remain usable at 320px", async ({ page }) => {
   await clear.click();
   await page.route("**/api/repositories/library/nginx/tags?*", (route) =>
     reply(route, {
-      items: [{ name: "v" + "1".repeat(127), size: null, updatedAt: null }],
+      items: [
+        {
+          name: "v" + "1".repeat(127),
+          platforms: [
+            {
+              os: "linux",
+              architecture: "amd64",
+              variant: null,
+              osVersion: null,
+              size: null,
+            },
+          ],
+          updatedAt: null,
+        },
+      ],
       count: 1,
       hasNext: false,
     }),
   );
   await page.goto("/repositories/library/nginx");
   await expect(page.getByText("Unavailable", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Next" })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Next" }).first(),
+  ).toBeDisabled();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -456,7 +482,7 @@ test("tag search debounces typing, resets pagination and replaces browser histor
   await expect(
     page.getByText("docker pull nginx:1.2-alpine", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Next" }).first().click();
   await expect(
     page.getByText("docker pull nginx:1.1-alpine", { exact: true }),
   ).toBeVisible();
@@ -565,7 +591,15 @@ for (const width of [375, 1280]) {
           items: Array.from({ length: 10 }, (_, index) => ({
             name: `${filtered ? "alpine" : "stable"}-${index}`,
             updatedAt: "2026-11-01T12:00:00Z",
-            size: 1048576,
+            platforms: [
+              {
+                os: "linux",
+                architecture: "amd64",
+                variant: null,
+                osVersion: null,
+                size: 1048576,
+              },
+            ],
           })),
           count: 20,
           hasNext: true,
@@ -594,7 +628,9 @@ for (const width of [375, 1280]) {
         exact: true,
       }),
     ).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Next" })).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "Next" }).first(),
+    ).toBeDisabled();
     await expect(input).toBeFocused();
     const during = await table.boundingBox();
     const footerDuring = await page.locator("footer").boundingBox();
@@ -614,6 +650,110 @@ for (const width of [375, 1280]) {
         exact: true,
       }),
     ).toBeEnabled();
-    await expect(page.getByRole("button", { name: "Next" })).toBeEnabled();
+    await expect(
+      page.getByRole("button", { name: "Next" }).first(),
+    ).toBeEnabled();
+  });
+}
+
+for (const width of [375, 1280]) {
+  test(`all platform sizes and both pagination controls work at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.route(
+      "**/api/repositories/library/nginx/tags?*",
+      async (route) => {
+        const number = Number(
+          new URL(route.request().url()).searchParams.get("page") || 1,
+        );
+        await reply(route, {
+          count: 21,
+          hasNext: number < 3,
+          items: [
+            {
+              name: "version-" + number,
+              updatedAt: null,
+              platforms: [
+                {
+                  os: "linux",
+                  architecture: "amd64",
+                  variant: null,
+                  osVersion: null,
+                  size: 1048576,
+                },
+                {
+                  os: "linux",
+                  architecture: "arm",
+                  variant: "v7",
+                  osVersion: null,
+                  size: null,
+                },
+                {
+                  os: "windows",
+                  architecture: "amd64",
+                  variant: null,
+                  osVersion: "10.0.20348",
+                  size: 4194304,
+                },
+              ],
+            },
+          ],
+        });
+      },
+    );
+    await page.goto(
+      "/repositories/library/nginx?from=%2F%3Fq%3Dnginx&os=linux&arch=arm",
+    );
+    const top = page.getByRole("navigation", {
+      name: "Tag pages above results",
+    });
+    const bottom = page.getByRole("navigation", {
+      name: "Tag pages below results",
+    });
+    await expect(page.getByRole("combobox")).toHaveCount(0);
+    await expect(page.getByText("linux/arm/v7", { exact: true })).toBeVisible();
+    await page.locator("summary").click();
+    await expect(
+      page.getByText("windows/amd64 (10.0.20348)", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText("4.0 MiB", { exact: true })).toBeVisible();
+    await expect(top.getByRole("button", { name: "Previous" })).toBeDisabled();
+    await top.getByRole("button", { name: "Next" }).click();
+    await expect(page.locator(".tag-name")).toHaveText("version-2");
+    await expect(bottom).toContainText("Page 2");
+    await top.getByRole("button", { name: "Next" }).click();
+    await expect(page.locator(".tag-name")).toHaveText("version-3");
+    await expect(top.getByRole("button", { name: "Next" })).toBeDisabled();
+    await expect(bottom.getByRole("button", { name: "Next" })).toBeDisabled();
+    await bottom.getByRole("button", { name: "Previous" }).click();
+    await expect(page.locator(".tag-name")).toHaveText("version-2");
+    await expect(top).toContainText("Page 2");
+    await page.reload();
+    await expect(top).toContainText("Page 2");
+    await page.getByRole("searchbox").fill("version");
+    await page.getByRole("searchbox").press("Enter");
+    await expect(page.locator(".tag-name")).toHaveText("version-1");
+    await expect(page).not.toHaveURL(/page=2|os=|arch=/);
+    await page.locator("summary").click();
+    await page.screenshot({
+      path: `test-results/platforms-pagination-${width}.png`,
+      fullPage: true,
+    });
+    const { default: AxeBuilder } = await import("@axe-core/playwright");
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+          .analyze()
+      ).violations,
+    ).toEqual([]);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.getByRole("link", { name: "Back to repositories" }).click();
+    await expect(page).toHaveURL("/?q=nginx");
   });
 }

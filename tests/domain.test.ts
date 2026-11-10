@@ -1,3 +1,4 @@
+import { platformLabel } from "../src/utils/platforms";
 import { describe, expect, it } from "vitest";
 import { normalizeSearch, normalizeTag } from "../server/dockerHub";
 import { pullCommand } from "../shared/types";
@@ -47,31 +48,58 @@ describe("repository identity and commands", () => {
 });
 
 describe("tag sizes and missing data", () => {
-  it("chooses only linux/amd64 instead of summing platforms or attestations", () => {
-    expect(
-      normalizeTag({
-        name: "v1",
-        images: [
-          { os: "unknown", architecture: "unknown", size: 2 },
-          { os: "linux", architecture: "arm64", size: 120 },
-          { os: "linux", architecture: "amd64", size: 100 },
-        ],
-      }).size,
-    ).toBe(100);
+  it("preserves platform-specific sizes and variants, excluding unknown attestations", () => {
+    const tag = normalizeTag({
+      name: "v1",
+      images: [
+        { os: "unknown", architecture: "unknown", size: 2 },
+        { os: "linux", architecture: "arm", variant: "v7", size: 120 },
+        { os: "linux", architecture: "amd64", size: 100 },
+        {
+          os: "windows",
+          architecture: "amd64",
+          os_version: "10.0.20348",
+          size: 300,
+        },
+      ],
+    });
+    expect(tag.platforms).toEqual([
+      {
+        os: "linux",
+        architecture: "arm",
+        variant: "v7",
+        osVersion: null,
+        size: 120,
+      },
+      {
+        os: "linux",
+        architecture: "amd64",
+        variant: null,
+        osVersion: null,
+        size: 100,
+      },
+      {
+        os: "windows",
+        architecture: "amd64",
+        variant: null,
+        osVersion: "10.0.20348",
+        size: 300,
+      },
+    ]);
   });
   it("preserves zero and reports missing or invalid sizes honestly", () => {
-    expect(normalizeTag({ name: "v1" }).size).toBeNull();
+    expect(normalizeTag({ name: "v1" }).platforms).toEqual([]);
     expect(
       normalizeTag({
         name: "v1",
         images: [{ os: "linux", architecture: "amd64", size: -1 }],
-      }).size,
+      }).platforms[0].size,
     ).toBeNull();
     expect(
       normalizeTag({
         name: "v1",
         images: [{ os: "linux", architecture: "amd64", size: 0 }],
-      }).size,
+      }).platforms[0].size,
     ).toBe(0);
     expect(formatSize(null)).toBe("Unavailable");
     expect(formatSize(0)).toBe("0 B");
@@ -104,5 +132,27 @@ describe("input boundaries", () => {
     expect(safeReturnTo("/?q=nginx&page=2")).toBe("/?q=nginx&page=2");
     expect(safeReturnTo("//evil.test")).toBe("/");
     expect(safeReturnTo("https://evil.test")).toBe("/");
+  });
+});
+
+describe("platform labels", () => {
+  const arm = {
+    os: "linux",
+    architecture: "arm",
+    variant: "v7",
+    osVersion: null,
+    size: 120,
+  };
+  it("labels variants and Windows versions", () => {
+    expect(platformLabel(arm)).toBe("linux/arm/v7");
+    expect(
+      platformLabel({
+        ...arm,
+        os: "windows",
+        architecture: "amd64",
+        variant: null,
+        osVersion: "10.0.20348",
+      }),
+    ).toBe("windows/amd64 (10.0.20348)");
   });
 });

@@ -17,6 +17,18 @@ assert.equal(
 );
 const tags = await hub.tags("library", "nginx", 1, "alpine");
 assert(tags.items.length > 0);
+assert(
+  tags.items.some((tag) =>
+    tag.platforms.some((image) => image.os === "linux" && image.size !== null),
+  ),
+);
+assert(
+  tags.items.every((tag) =>
+    tag.platforms.every(
+      (image) => image.os !== "unknown" && image.architecture !== "unknown",
+    ),
+  ),
+);
 assert(tags.items.every((tag) => tag.name.includes("alpine")));
 assert.equal(
   (await hub.tags("library", "nginx", 1, "zznoimage93829173")).count,
@@ -37,5 +49,5 @@ console.log(
   "Live smoke passed: 10 showcase images, search and tag pagination, empty results, namespaced details, size metadata, and 404.",
 );
 console.log(
-  `Example tag: ${tags.items[0].name}; linux/amd64 bytes: ${tags.items[0].size}`,
+  `Example tag: ${tags.items[0].name}; platforms: ${tags.items[0].platforms.map((image) => `${image.os}/${image.architecture}${image.variant ? `/${image.variant}` : ""}: ${image.size}`).join(", ")}`,
 );
